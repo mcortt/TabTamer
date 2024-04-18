@@ -1,0 +1,50 @@
+{
+    "manifest_version": 3,
+    "name": "Tab Tamer",
+    "version": "1.0.1",
+    "permissions": ["tabs", "contextMenus"],
+    "description": "Close tabs left, right, other, detach tab, merge windows.",
+    "background": {
+        "scripts": ["background.js"]
+    },
+    "commands": {
+        "_execute_detach_tab": {
+            "suggested_key": {
+                "default": "Ctrl+Alt+Down"
+            },
+            "description": "Detach Tab"
+        },
+        "_execute_merge_windows": {
+            "suggested_key": {
+                "default": "Ctrl+Alt+Up"
+            },
+            "description": "Merge Windows"
+        },
+        "_execute_close_tabs_to_right": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+Right"
+            },
+            "description": "Close Tabs to the Right"
+        },
+        "_execute_close_tabs_to_left": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+Left"
+            },
+            "description": "Close Tabs to the Left"
+        },
+        "_execute_close_other_tabs": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+Up"
+            },
+            "description": "Close All Other Tabs"
+        }
+    },
+    "icons": {
+        "512": "icon.png"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+          "id": "SC@tabmanager"
+        }
+    }
+}
