@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TabTamer Options</title>
+    <style>
+        body {
+            background-color: #282c34;
+            color: #abb2bf;
+        }
+        input[type="checkbox"] {
+            transform: scale(1.5);
+            margin-right: 1rem;
+            margin-left: 1rem;
+        }
+        label {
+            font-size: 1.25em;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>TabTamer Options</h1>
+    <h4>Your chosen options are automatically saved.</h4>
+    <label>
+        <input type="checkbox" id="maximizeOnStartup">
+        Maximize On Startup
+    </label>
+    <br>
+    <label>
+        <input type="checkbox" id="maximizeNewWindows">
+        Maximize New Windows
+    </label>
+    <script defer src="options.js"></script>
+</body>
+</html>

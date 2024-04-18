@@ -1,7 +1,29 @@
-// background.js
 var browser = browser || chrome;
 
-// Create context menu items
+var storage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync ? chrome.storage : browser.storage;
+
+chrome.runtime.onStartup.addListener(() => {
+    storage.sync.get(['maximizeOnStartup'], function(result) {
+        if (result.maximizeOnStartup) {
+            chrome.windows.getCurrent((window) => {
+                if (window.state !== 'maximized') {
+                    chrome.windows.update(window.id, { state: 'maximized' });
+                }
+            });
+        }
+    });
+});
+
+chrome.windows.onCreated.addListener((window) => {
+    storage.sync.get(['maximizeNewWindows'], function(result) {
+        if (result.maximizeNewWindows) {
+            if (window.state !== 'maximized' && window.type !== 'popup') {
+                chrome.windows.update(window.id, { state: 'maximized' });
+            }
+        }
+    });
+});
+
 const menuItems = [
   { id: "_execute_detach_tab", title: "Detach Tab" },
   { id: "_execute_merge_windows", title: "Merge All Windows" },
@@ -20,7 +42,6 @@ menuItems.forEach(item => {
   });
 });
 
-// Store the index of each tab when it's detached
 var detachedTabs = new Map();
 
 async function executeCommand(command) {
@@ -73,12 +94,21 @@ async function executeCommand(command) {
   }
 }
 
-// Add a listener for when a context menu item is clicked
 browser.contextMenus.onClicked.addListener((info, tab) => {
   executeCommand(info.menuItemId);
 });
 
-// Add a listener for when a command is issued
 browser.commands.onCommand.addListener((command) => {
   executeCommand(command);
+});
+
+browser.runtime.onStartup.addListener(async () => {
+  let currentWindow = await browser.windows.getCurrent();
+  browser.windows.update(currentWindow.id, { state: "maximized" });
+});
+
+browser.windows.onCreated.addListener(async (window) => {
+  if (window.type !== "popup") {
+    browser.windows.update(window.id, { state: "maximized" });
+  }
 });

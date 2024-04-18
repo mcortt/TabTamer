@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Tab Tamer",
-    "version": "1.0.1",
-    "permissions": ["tabs", "contextMenus"],
+    "version": "1.2.1",
+    "permissions": ["tabs", "contextMenus", "storage"],
     "description": "Close tabs left, right, other, detach tab, merge windows.",
     "background": {
         "scripts": ["background.js"]
@@ -41,6 +41,10 @@
     },
     "icons": {
         "512": "icon.png"
+    },
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": false
     },
     "browser_specific_settings": {
         "gecko": {
