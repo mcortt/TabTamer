@@ -15,6 +15,10 @@
         label {
             font-size: 1.25em;
             display: block;
+            margin-bottom: 1rem;
+        }
+        #contextMenuOptions {
+            margin-left: 30px;
         }
     </style>
 </head>
@@ -25,11 +29,40 @@
         <input type="checkbox" id="maximizeOnStartup">
         Maximize On Startup
     </label>
-    <br>
     <label>
         <input type="checkbox" id="maximizeNewWindows">
         Maximize New Windows
     </label>
+    <label>
+        <input type="checkbox" id="enableContextMenu">
+        Enable Context Menu
+    </label>
+    <div id="contextMenuOptions">
+        <label>
+            <input type="checkbox" id="_execute_detach_tab">
+            Detach Tab
+        </label>
+        <label>
+            <input type="checkbox" id="_execute_merge_windows">
+            Merge All Windows
+        </label>
+        <label>
+            <input type="checkbox" id="_execute_close_tabs_to_left">
+            Close Tabs To Left
+        </label>
+        <label>
+            <input type="checkbox" id="_execute_close_tabs_to_right">
+            Close Tabs To Right
+        </label>
+        <label>
+            <input type="checkbox" id="_execute_close_other_tabs">
+            Close Other Tabs
+        </label>
+        <label>
+            <input type="checkbox" id="_set_refresh_interval">
+            Auto Refresh Page
+        </label>
+    </div>
     <script defer src="options.js"></script>
 </body>
 </html>
