@@ -55,11 +55,9 @@ function updateContextMenu(enable) {
   if (enable) {
     storage.sync.get(menuItems.map(item => item.id), function(results) {
       menuItems.forEach(item => {
-        // Remove the item if it exists and is disabled
         if (browser.contextMenus.remove(item.id)) {
           browser.contextMenus.remove(item.id);
         }
-        // Add the item if it's not explicitly disabled
         if (results[item.id] !== false) {
           let id = browser.contextMenus.create({
             id: item.id,
@@ -105,35 +103,45 @@ let refreshIntervalId = null;
 var currentRefreshInterval = null;
 
 async function executeCommand(command, info) {
+  console.log("executeCommand called with command: ", command);
+  console.trace(); 
   let tabs = await browser.tabs.query({currentWindow: true, highlighted: true});
   let currentTab = tabs[0];
   let allTabs, tabsToClose;
 
   switch (command) {
     case "_execute_detach_tab":
-      detachedTabs.set(currentTab.id, currentTab.index);
-      let newWindow = await browser.windows.create({tabId: currentTab.id});
-      tabs.slice(1).forEach(tab => {
-        detachedTabs.set(tab.id, tab.index);
-        browser.tabs.move(tab.id, {windowId: newWindow.id, index: -1});
-      });
+      let selectedTabs = await browser.tabs.query({windowId: currentTab.windowId, highlighted: true});
+      if (selectedTabs.length > 0) {
+        let newWin = await browser.windows.create({tabId: selectedTabs[0].id});
+        let movePromises = selectedTabs.slice(1).map((tab, i) => {
+          detachedTabs.set(tab.id, tab.index);
+          return browser.tabs.move(tab.id, {windowId: newWin.id, index: -1}); 
+        });
+        await Promise.all(movePromises);
+      }
       break;
+
     case "_execute_merge_windows":
       let windows = await browser.windows.getAll({windowTypes: ["normal"]});
       allTabs = [];
       for (let win of windows) {
         let winTabs = await browser.tabs.query({windowId: win.id});
-        allTabs = allTabs.concat(winTabs.map(tab => ({id: tab.id, index: detachedTabs.get(tab.id) || -1})));
+        allTabs = allTabs.concat(winTabs);
       }
       if (allTabs.length > 0) {
         let newWin = await browser.windows.create({tabId: allTabs[0].id});
-        allTabs.slice(1).sort((a, b) => a.index - b.index).forEach((tab, i) => {
-          browser.tabs.move(tab.id, {windowId: newWin.id, index: i});
+        let movePromises = allTabs.slice(1).map((tab, i) => {
+          return browser.tabs.move(tab.id, {windowId: newWin.id, index: -1}); 
         });
-        browser.tabs.update(currentTab.id, {active: true});
-        windows.forEach(win => {
-          if (win.id !== newWin.id) browser.windows.remove(win.id);
-        });
+        await Promise.all(movePromises);
+        await browser.tabs.update(currentTab.id, {active: true});
+        windows = await browser.windows.getAll({windowTypes: ["normal"]}); 
+        for (let win of windows) {
+          if (win.id !== newWin.id) {
+            await browser.windows.remove(win.id);
+          }
+        }
       }
       break;
     case "_execute_close_tabs_to_right":
@@ -188,14 +196,6 @@ async function executeCommand(command, info) {
       break;
 }
 }
-
-browser.contextMenus.onClicked.addListener((info, tab) => {
-  executeCommand(info.menuItemId, info);
-});
-
-browser.commands.onCommand.addListener((command) => {
-  executeCommand(command);
-});
 
 browser.runtime.onStartup.addListener(async () => {
   let currentWindow = await browser.windows.getCurrent();

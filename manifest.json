@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Tab Tamer",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "description": "Close tabs left, right, other, auto-refresh tab, detach tab, merge windows.",
     "permissions": ["tabs", "contextMenus", "storage"],
     "background": {
