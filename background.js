@@ -1,28 +1,9 @@
 var browser = browser || chrome;
-
 var storage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync ? chrome.storage : browser.storage;
 
-browser.runtime.onStartup.addListener(() => {
-    storage.sync.get(['maximizeOnStartup'], function(result) {
-        if (result.maximizeOnStartup) {
-            browser.windows.getCurrent((window) => {
-                if (window.state !== 'maximized') {
-                    browser.windows.update(window.id, { state: 'maximized' });
-                }
-            });
-        }
-    });
-});
-
-browser.windows.onCreated.addListener((window) => {
-    storage.sync.get(['maximizeNewWindows'], function(result) {
-        if (result.maximizeNewWindows) {
-            if (window.state !== 'maximized' && window.type !== 'popup') {
-                browser.windows.update(window.id, { state: 'maximized' });
-            }
-        }
-    });
-});
+var detachedTabs = new Map();
+var refreshIntervals = new Map();
+var pageActionStates = new Map();
 
 const menuItems = [
   { id: "_execute_detach_tab", title: "Detach Tab" },
@@ -35,22 +16,19 @@ const menuItems = [
   { id: "_set_refresh_interval", title: "Auto Refresh Page" },
 ];
 
-storage.sync.get(['enableContextMenu'], function(result) {
-  let enableContextMenu = result.hasOwnProperty('enableContextMenu') ? result.enableContextMenu : true;
-  updateContextMenu(enableContextMenu);
-});
+function convertTimeToMilliseconds(time) {
+  let value = parseInt(time.slice(0, -1));
+  let unit = time.slice(-1);
 
-storage.onChanged.addListener(function(changes, namespace) {
-  if (changes.hasOwnProperty('enableContextMenu')) {
-    updateContextMenu(changes.enableContextMenu.newValue);
-  } else {
-    menuItems.forEach(item => {
-      if (changes.hasOwnProperty(item.id)) {
-        updateContextMenu(changes[item.id].newValue);
-      }
-    });
+  switch (unit) {
+    case "s":
+      return value * 1000;
+    case "m":
+      return value * 60 * 1000;
+    case "h":
+      return value * 60 * 60 * 1000;
   }
-});
+}
 
 function updateContextMenu(enable) {
   if (enable) {
@@ -74,7 +52,6 @@ function updateContextMenu(enable) {
                 title: time,
                 parentId: id,
                 contexts: ["tab"],
-                type: "checkbox"
               });
             });
           }
@@ -85,23 +62,6 @@ function updateContextMenu(enable) {
     browser.contextMenus.removeAll();
   }
 }
-function convertTimeToMilliseconds(time) {
-  let value = parseInt(time.slice(0, -1));
-  let unit = time.slice(-1);
-
-  switch (unit) {
-    case "s":
-      return value * 1000;
-    case "m":
-      return value * 60 * 1000;
-    case "h":
-      return value * 60 * 60 * 1000;
-  }
-}
-
-var detachedTabs = new Map();
-let refreshIntervalId = null;
-var currentRefreshInterval = null;
 
 async function executeCommand(command, info) {
   console.log("executeCommand called with command: ", command);
@@ -173,43 +133,74 @@ async function executeCommand(command, info) {
       });
       duplicateTabs.forEach(tab => browser.tabs.remove(tab.id));
       break;
-    case "_set_refresh_interval_5s":
-    case "_set_refresh_interval_10s":
-    case "_set_refresh_interval_15s":
-    case "_set_refresh_interval_30s":
-    case "_set_refresh_interval_45s":
-    case "_set_refresh_interval_1m":
-    case "_set_refresh_interval_2m":
-    case "_set_refresh_interval_5m":
-    case "_set_refresh_interval_10m":
-    case "_set_refresh_interval_15m":
-    case "_set_refresh_interval_30m":
-    case "_set_refresh_interval_45m":
-    case "_set_refresh_interval_1h":
-      let time = command.split("_set_refresh_interval_")[1];
-      let interval = convertTimeToMilliseconds(time);
-
-      if (refreshIntervalId !== null) {
-        clearInterval(refreshIntervalId);
-        refreshIntervalId = null;
-        browser.contextMenus.update(currentRefreshInterval, {checked: false});
-        currentRefreshInterval = null;
-        browser.pageAction.hide(currentTab.id); 
-      }
-
-      if (!info.wasChecked) {
-        refreshIntervalId = setInterval(() => {
-          browser.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            browser.tabs.reload(tabs[0].id);
-          });
-        }, interval);
-        browser.contextMenus.update(command, {checked: true});
+      case "_set_refresh_interval_5s":
+      case "_set_refresh_interval_10s":
+      case "_set_refresh_interval_15s":
+      case "_set_refresh_interval_30s":
+      case "_set_refresh_interval_45s":
+      case "_set_refresh_interval_1m":
+      case "_set_refresh_interval_2m":
+      case "_set_refresh_interval_5m":
+      case "_set_refresh_interval_10m":
+      case "_set_refresh_interval_15m":
+      case "_set_refresh_interval_30m":
+      case "_set_refresh_interval_45m":
+      case "_set_refresh_interval_1h":
+        let time = command.split("_set_refresh_interval_")[1];
+        let interval = convertTimeToMilliseconds(time);
+      
+        if (refreshIntervals.has(currentTab.id)) {
+          clearInterval(refreshIntervals.get(currentTab.id));
+          refreshIntervals.delete(currentTab.id);
+        }
+      
+        refreshIntervals.set(currentTab.id, setInterval(() => {
+          browser.tabs.reload(currentTab.id);
+        }, interval));
         currentRefreshInterval = command;
         browser.pageAction.show(currentTab.id);
+        break;
+    }
+}
+
+browser.runtime.onStartup.addListener(() => {
+  storage.sync.get(['maximizeOnStartup'], function(result) {
+      if (result.maximizeOnStartup) {
+          browser.windows.getCurrent((window) => {
+              if (window.state !== 'maximized') {
+                  browser.windows.update(window.id, { state: 'maximized' });
+              }
+          });
       }
-      break;
-}
-}
+  });
+});
+
+browser.windows.onCreated.addListener((window) => {
+  storage.sync.get(['maximizeNewWindows'], function(result) {
+      if (result.maximizeNewWindows) {
+          if (window.state !== 'maximized' && window.type !== 'popup') {
+              browser.windows.update(window.id, { state: 'maximized' });
+          }
+      }
+  });
+});
+
+storage.sync.get(['enableContextMenu'], function(result) {
+  let enableContextMenu = result.hasOwnProperty('enableContextMenu') ? result.enableContextMenu : true;
+  updateContextMenu(enableContextMenu);
+});
+
+storage.onChanged.addListener(function(changes, namespace) {
+  if (changes.hasOwnProperty('enableContextMenu')) {
+    updateContextMenu(changes.enableContextMenu.newValue);
+  } else {
+    menuItems.forEach(item => {
+      if (changes.hasOwnProperty(item.id)) {
+        updateContextMenu(changes[item.id].newValue);
+      }
+    });
+  }
+});
 
 browser.runtime.onStartup.addListener(async () => {
   let currentWindow = await browser.windows.getCurrent();
@@ -241,25 +232,29 @@ browser.runtime.onMessage.addListener((message) => {
   }
 });
 
-var pageActionStates = new Map();
-
 browser.contextMenus.onClicked.addListener((info, tab) => {
-  executeCommand(info.menuItemId, info, tab);
-  if (info.menuItemId.startsWith("_set_refresh_interval_")) {
-    pageActionStates.set(tab.id, true);
-    browser.pageAction.show(tab.id);
+  if (info.menuItemId === "_stop_refresh") {
+    if (refreshIntervals.has(tab.id)) {
+      clearInterval(refreshIntervals.get(tab.id));
+      refreshIntervals.delete(tab.id);
+      browser.pageAction.hide(tab.id);
+      browser.contextMenus.update(stopRefreshMenuItemId, { visible: false });
+    }
+  } else {
+    executeCommand(info.menuItemId, info, tab);
+    if (info.menuItemId.startsWith("_set_refresh_interval_")) {
+      pageActionStates.set(tab.id, true);
+      browser.pageAction.show(tab.id);
+      browser.contextMenus.update(stopRefreshMenuItemId, { visible: true });
+    }
   }
 });
 
 browser.pageAction.onClicked.addListener((tab) => {
-  if (refreshIntervalId !== null) {
-    clearInterval(refreshIntervalId);
-    refreshIntervalId = null;
-    if (currentRefreshInterval !== null) {
-      browser.contextMenus.update(currentRefreshInterval, {checked: false});
-      currentRefreshInterval = null;
-    }
-    pageActionStates.set(tab.id, false);
+  if (refreshIntervals.has(tab.id)) {
+    clearInterval(refreshIntervals.get(tab.id));
+    refreshIntervals.delete(tab.id);
+    currentRefreshInterval = null;
     browser.pageAction.hide(tab.id);
   }
 });
@@ -276,4 +271,30 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 browser.commands.onCommand.addListener((command) => {
   executeCommand(command);
+});
+
+browser.tabs.onRemoved.addListener((tabId) => {
+  if (refreshIntervals.has(tabId)) {
+    clearInterval(refreshIntervals.get(tabId));
+    refreshIntervals.delete(tabId);
+    if (currentRefreshInterval === tabId) {
+      currentRefreshInterval = null;
+    }
+  }
+});
+
+browser.tabs.onActivated.addListener(async (activeInfo) => {
+  let tabId = activeInfo.tabId;
+  let isVisible = refreshIntervals.has(tabId);
+  browser.contextMenus.update(stopRefreshMenuItemId, { visible: isVisible });
+});
+
+let stopRefreshMenuItemId = browser.contextMenus.create({
+  id: "_stop_refresh",
+  title: "Stop Auto Refresh",
+  contexts: ["tab"],
+  icons: {
+    "16": "stopicon.svg"
+  },
+  visible: false
 });
