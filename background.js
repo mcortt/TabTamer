@@ -31,6 +31,7 @@ const menuItems = [
   { id: "_execute_close_tabs_to_left", title: "Close Tabs To Left" },
   { id: "_execute_close_tabs_to_right", title: "Close Tabs To Right" },
   { id: "_execute_close_other_tabs", title: "Close Other Tabs" },
+  { id: "_execute_remove_duplicates", title: "Remove Duplicate Tabs" },
   { id: "_set_refresh_interval", title: "Auto Refresh Page" },
 ];
 
@@ -158,6 +159,19 @@ async function executeCommand(command, info) {
       allTabs = await browser.tabs.query({currentWindow: true});
       tabsToClose = allTabs.filter(tab => tab.id !== currentTab.id);
       tabsToClose.forEach(tab => browser.tabs.remove(tab.id));
+      break;
+    case "_execute_remove_duplicates":
+      allTabs = await browser.tabs.query({currentWindow: true});
+      let urls = new Set();
+      let duplicateTabs = allTabs.filter(tab => {
+        if (urls.has(tab.url)) {
+          return true;
+        } else {
+          urls.add(tab.url);
+          return false;
+        }
+      });
+      duplicateTabs.forEach(tab => browser.tabs.remove(tab.id));
       break;
     case "_set_refresh_interval_5s":
     case "_set_refresh_interval_10s":

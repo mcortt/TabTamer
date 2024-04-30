@@ -9,6 +9,7 @@ const optionIds = [
     '_execute_close_tabs_to_left',
     '_execute_close_tabs_to_right',
     '_execute_close_other_tabs',
+    '_execute_remove_duplicates',
     '_set_refresh_interval'
 ];
 
