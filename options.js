@@ -1,4 +1,4 @@
-var storage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync ? chrome.storage : browser.storage;
+var storage = browser.storage;
 
 const optionIds = [
     'maximizeOnStartup',
@@ -21,6 +21,7 @@ function saveOptions() {
         acc[id] = document.querySelector(`#${id}`).checked;
         return acc;
     }, {});
+    console.log('Saving options:', options); 
     storage.sync.set(options);
 }
 

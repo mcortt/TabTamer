@@ -1,6 +1,3 @@
-var browser = browser || chrome;
-var storage = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync ? chrome.storage : browser.storage;
-
 var detachedTabs = new Map();
 var refreshIntervals = new Map();
 var pageActionStates = new Map();
@@ -32,7 +29,7 @@ function convertTimeToMilliseconds(time) {
 
 function updateContextMenu(enable) {
   if (enable) {
-    storage.sync.get(menuItems.map(item => item.id), function(results) {
+    browser.storage.sync.get(menuItems.map(item => item.id), function(results) {
       menuItems.forEach(item => {
         if (browser.contextMenus.remove(item.id)) {
           browser.contextMenus.remove(item.id);
@@ -164,7 +161,7 @@ async function executeCommand(command, info) {
 }
 
 browser.runtime.onStartup.addListener(() => {
-  storage.sync.get(['maximizeOnStartup'], function(result) {
+  browser.storage.sync.get(['maximizeOnStartup'], function(result) {
       if (result.maximizeOnStartup) {
           browser.windows.getCurrent((window) => {
               if (window.state !== 'maximized') {
@@ -176,7 +173,7 @@ browser.runtime.onStartup.addListener(() => {
 });
 
 browser.windows.onCreated.addListener((window) => {
-  storage.sync.get(['maximizeNewWindows'], function(result) {
+  browser.storage.sync.get(['maximizeNewWindows'], function(result) {
       if (result.maximizeNewWindows) {
           if (window.state !== 'maximized' && window.type !== 'popup') {
               browser.windows.update(window.id, { state: 'maximized' });
@@ -185,12 +182,12 @@ browser.windows.onCreated.addListener((window) => {
   });
 });
 
-storage.sync.get(['enableContextMenu'], function(result) {
+browser.storage.sync.get(['enableContextMenu'], function(result) {
   let enableContextMenu = result.hasOwnProperty('enableContextMenu') ? result.enableContextMenu : true;
   updateContextMenu(enableContextMenu);
 });
 
-storage.onChanged.addListener(function(changes, namespace) {
+browser.storage.onChanged.addListener(function(changes, namespace) {
   if (changes.hasOwnProperty('enableContextMenu')) {
     updateContextMenu(changes.enableContextMenu.newValue);
   } else {
@@ -199,17 +196,6 @@ storage.onChanged.addListener(function(changes, namespace) {
         updateContextMenu(changes[item.id].newValue);
       }
     });
-  }
-});
-
-browser.runtime.onStartup.addListener(async () => {
-  let currentWindow = await browser.windows.getCurrent();
-  browser.windows.update(currentWindow.id, { state: "maximized" });
-});
-
-browser.windows.onCreated.addListener(async (window) => {
-  if (window.type !== "popup") {
-    browser.windows.update(window.id, { state: "maximized" });
   }
 });
 
